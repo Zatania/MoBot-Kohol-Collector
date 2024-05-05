@@ -3,6 +3,7 @@ import time
 import smbus
 import math
 import sys
+import RPi.GPIO as io
 
 ##### GLOBAL VARIABLES #####
 
@@ -35,9 +36,9 @@ increment = 0
 # Bluetooth serial connection
 bluetooth = serial.Serial('/dev/ttyUSB0', 9600)
 time.sleep(2)
-# Arduino serial connection
+""" # Arduino serial connection
 arduino = serial.Serial('/dev/ttyACM0', 9600)
-time.sleep(2)
+time.sleep(2) """
 
 #####################################
 
@@ -73,7 +74,7 @@ NMEA_buff = 0
 ############## STEERING FUNCTIONS ########################
 
 # Close all serial
-def close():
+""" def close():
     arduino.close()
     print("Arduino Serial Closed")
 # Set Speed
@@ -111,7 +112,136 @@ def slowRight():
 # Send Stop Command
 def stop():
     arduino.write(b"S\n")
-    print("Stop Car")
+    print("Stop Car") """
+
+##### BT7690 STEERING ##################
+io.setmode(io.BCM)
+io.setwarnings(False)
+
+PWM_MAX = 100
+
+######## BT7690 ##################
+# LEFT MOTOR
+L_L_EN = 21 # leftmotor_in1_pin
+L_R_EN = 20 # leftmotor_in2_pin
+L_L_PWM = 12 # leftmotorpwm_pin_l
+L_R_PWM = 16 # leftmotorpwm_pin_r
+
+# RIGHT MOTOR
+R_L_EN = 26 # rightmotor_in1_pin
+R_R_EN = 19 # rightmotor_in2_pin
+R_L_PWM = 13 # rightmotorpwm_pin_l
+R_R_PWM = 6 # rightmotorpwm_pin_r
+
+leftmotor_in1_pin = L_L_EN
+leftmotor_in2_pin = L_R_EN
+rightmotor_in1_pin = R_L_EN
+rightmotor_in2_pin = R_R_EN
+
+io.setup(leftmotor_in1_pin, io.OUT)
+io.setup(leftmotor_in2_pin, io.OUT)
+io.setup(rightmotor_in1_pin, io.OUT)
+io.setup(rightmotor_in2_pin, io.OUT)
+
+io.output(leftmotor_in1_pin, True)
+io.output(leftmotor_in2_pin, True)
+io.output(rightmotor_in1_pin, True)
+io.output(rightmotor_in2_pin, True)
+
+leftmotorpwm_pin_l = L_L_PWM 
+leftmotorpwm_pin_r = L_R_PWM
+rightmotorpwm_pin_l = R_L_PWM
+rightmotorpwm_pin_r = R_R_PWM
+
+io.setup(leftmotorpwm_pin_l, io.OUT)
+io.setup(leftmotorpwm_pin_r, io.OUT)
+io.setup(rightmotorpwm_pin_l, io.OUT)
+io.setup(rightmotorpwm_pin_r, io.OUT)
+
+leftmotorpwm_l = io.PWM(leftmotorpwm_pin_l,100)
+leftmotorpwm_r = io.PWM(leftmotorpwm_pin_r,100)
+rightmotorpwm_l = io.PWM(rightmotorpwm_pin_l,100)
+rightmotorpwm_r = io.PWM(rightmotorpwm_pin_r,100)
+
+leftmotorpwm_l.start(0)
+leftmotorpwm_r.start(0)
+rightmotorpwm_l.start(0)
+rightmotorpwm_r.start(0)
+
+leftmotorpwm_l.ChangeDutyCycle(0)
+leftmotorpwm_r.ChangeDutyCycle(0)
+rightmotorpwm_l.ChangeDutyCycle(0)
+rightmotorpwm_r.ChangeDutyCycle(0)
+############################################
+
+def setMotorLeft(power):
+   int(power)
+   if power < 0:
+      # Rueckwaertsmodus fuer den linken Motor
+      #setMotorMode("leftmotor", "reverse")
+      pwm = -int(PWM_MAX * power)
+      if pwm > PWM_MAX:
+         pwm = PWM_MAX
+      leftmotorpwm_l.ChangeDutyCycle(pwm)
+      leftmotorpwm_r.ChangeDutyCycle(0)	  
+   elif power > 0:
+      # Vorwaertsmodus fuer den linken Motor
+      #setMotorMode("leftmotor", "forward")
+      pwm = int(PWM_MAX * power)
+      if pwm > PWM_MAX:
+         pwm = PWM_MAX
+      leftmotorpwm_l.ChangeDutyCycle(0)
+      leftmotorpwm_r.ChangeDutyCycle(pwm)
+   else:
+      # Stoppmodus fuer den linken Motor
+      leftmotorpwm_l.ChangeDutyCycle(0)
+      leftmotorpwm_r.ChangeDutyCycle(0)
+
+def setMotorRight(power):
+   int(power)
+   if power < 0:
+      # Rueckwaertsmodus fuer den rechten Motor
+      #setMotorMode("rightmotor", "reverse")
+      pwm = -int(PWM_MAX * power)
+      if pwm > PWM_MAX:
+         pwm = PWM_MAX
+      rightmotorpwm_l.ChangeDutyCycle(pwm)
+      rightmotorpwm_r.ChangeDutyCycle(0)
+   elif power > 0:
+      # Vorwaertsmodus fuer den rechten Motor
+      #setMotorMode("rightmotor", "forward")
+      pwm = int(PWM_MAX * power)
+      if pwm > PWM_MAX:
+         pwm = PWM_MAX
+      rightmotorpwm_l.ChangeDutyCycle(0)
+      rightmotorpwm_r.ChangeDutyCycle(pwm)
+   else:
+      # Stoppmodus fuer den rechten Motor
+      rightmotorpwm_l.ChangeDutyCycle(0)
+      rightmotorpwm_r.ChangeDutyCycle(0)
+
+def forward():
+    setMotorLeft(1)
+    setMotorRight(1)
+    print("FORWARD")
+def reverse():
+    setMotorLeft(-1)
+    setMotorRight(-1)
+    print("BACKWARD")
+def left():
+    setMotorLeft(-1)
+    setMotorRight(1)
+    print("LEFT")
+def right():
+    setMotorLeft(1)
+    setMotorRight(-1)
+    print("RIGHT")
+def stop():
+    setMotorLeft(0)
+    setMotorRight(0)
+    print("STOP")
+
+################################3
 # Send Compass Turn Right Command
 def compass_right():
     global desired_heading, compass_heading, blueToothVal, compass_dev
@@ -181,6 +311,13 @@ def compass_forward():
 
 ###############################################################
 
+######### GET INFO #################
+def get_info():
+    latitude, longitude = get_position()
+    heading = get_compass()
+
+    bluetooth.write(bytes(f"Latitude: {latitude:.5f}, Longitude: {longitude:.5f}, Heading: {heading:.2f}°\n", 'utf-8'))
+
 ########## BLUETOOTH FUNCTIONS #####################
 
 def bluetooth_commands():
@@ -231,6 +368,7 @@ def bluetooth_commands():
             print("Get GPS Info")
             # Call function to get GPS info
             # Function Removed
+            get_info()
         elif blueToothVal == 12:
             print("Compass Turn Right")
             # Call function to turn right according to compass
@@ -249,6 +387,7 @@ def bluetooth_commands():
         elif blueToothVal == 16:
             print("Clear Waypoints")
             # Call function to clear waypoints
+            clear_waypoints()
         elif blueToothVal == 17:
             print("Waypoints Complete")
             ac = 0
@@ -369,6 +508,7 @@ def clear_waypoints():
     ac = 0
 
     print("GPS WAYPOINTS CLEARED")
+    bluetooth.write(b"GPS WAYPOINTS CLEARED\n")
 
 def go_waypoint():
     global ac, compass_heading, blueToothVal, Distance_To_Home, GPS_Course, Home_LATarray, Home_LONarray
@@ -483,4 +623,7 @@ if __name__ == "__main__":
            bluetooth_commands()
     except KeyboardInterrupt:
         print("Keyboard Interrupt")
+        rpwm.stop()
+        lpwm.stop()
+        io.cleanup()
         exit()
